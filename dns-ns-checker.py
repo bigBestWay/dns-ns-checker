@@ -68,8 +68,12 @@ def __query_ns_records_worker(domain, dns_server):
         answer = dns.resolver.resolve_at(where=dns_server, qname=domain, rdtype="NS")
         for rr in answer:
             ns_servers.append(str(rr.target))
-    except Exception as e:
+    except dns.resolver.NoNameservers as e:
         pass
+    except dns.resolver.LifetimeTimeout as e:
+        pass
+    except Exception as e:
+        print(e)
     return ns_servers
 
 
