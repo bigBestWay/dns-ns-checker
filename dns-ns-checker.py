@@ -74,7 +74,7 @@ def __query_ns_records_worker(domain, dns_server):
 
 
 def query_ns_records(domain):
-    results = []
+    results = set()
     with ThreadPoolExecutor(max_workers=len(GLOBAL_DNS_SERVER_LIST)) as t:
         obj_list = []
         for k, dns_server in GLOBAL_DNS_SERVER_LIST.items():
@@ -84,8 +84,9 @@ def query_ns_records(domain):
         for future in as_completed(obj_list):
             data = future.result()
             # print(f"query_ns_records: {domain}->{data}")
-            results += data
-    return set(results)
+            for d in data:
+                results.add(d)
+    return results
 
 
 def usage():
