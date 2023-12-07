@@ -90,14 +90,37 @@ def query_ns_records(domain):
 
 def usage():
     print(f'dns-ns-checker.py <DOMAIN>')
+    print(f'dns-ns-checker.py -r <DOMAIN_LIST_FILE>')
+
+
+def parent_name(name):
+    p = name.find('.')
+    if p != -1:
+        return name[p+1:]
+    return name
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
+    if len(sys.argv) == 3 and sys.argv[1].strip() == '-r':
+        parent_domains = []
+        with open(sys.argv[2].strip(), 'r') as f:
+            for name in f.readlines():
+                parent_domains.append(parent_name(name.strip()))
+        parent_domains = set(parent_domains)
+        print(parent_domains)
+        for name in parent_domains:
+            if vulnerable_check(name.strip()):
+                print(f'!!! {name} is vulnerable. Here are NS Records:')
+                print(query_ns_records(name))
+            else:
+                print(f'{name} is not vulnerable.')
+    elif len(sys.argv) == 2:
+        name = sys.argv[1].strip()
+        if vulnerable_check(name):
+            print(f'!!! {name} is vulnerable. Here are NS Records:')
+            print(query_ns_records(name))
+        else:
+            print(f'{name} is not vulnerable.')
+    else:
         usage()
         exit(1)
-
-    name = sys.argv[1]
-    if vulnerable_check(name):
-        print(f'{name} is vulnerable. Here are NS Records:')
-        print(query_ns_records(name))
