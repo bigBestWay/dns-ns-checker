@@ -76,11 +76,13 @@ def __query_ns_records_worker(domain, dns_server):
         answer = dns.resolver.resolve_at(where=dns_server, qname=domain, rdtype="NS")
         for rr in answer:
             ns_servers.append(str(rr.target))
-    except dns.resolver.NoNameservers as e:
+    except dns.resolver.NoNameservers:
         pass
-    except dns.resolver.LifetimeTimeout as e:
+    except dns.resolver.LifetimeTimeout:
         pass
-    except dns.resolver.NoAnswer as e:  # 没有应答
+    except dns.resolver.NoAnswer:  # 没有应答
+        pass
+    except dns.resolver.NXDOMAIN:
         pass
     except Exception as e:
         print(type(e))
