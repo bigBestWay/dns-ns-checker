@@ -122,7 +122,7 @@ def query_a_records(domain):
 def vulnerable_check(parent_domain):
     # 先默认执行一次NS查询，如果有错误就直接返回
     nameservers = query_ns_records(parent_domain)
-    print('NS Record Values:')
+    print(f'{parent_domain} NS Record Values:')
     print(nameservers)
 
     if __check_ns_query_error(parent_domain) is True:
@@ -168,6 +168,7 @@ if __name__ == '__main__':
                 print(f'!!! {name} is vulnerable.')
             else:
                 print(f'{name} is not vulnerable.')
+            print('--------------------------------------')
     elif len(sys.argv) == 2:
         name = sys.argv[1].strip()
         if vulnerable_check(name.strip()):
