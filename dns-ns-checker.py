@@ -1,8 +1,8 @@
+import ipaddress
 import sys
 import dns.resolver
 from dns.edns import EDECode
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
 
 # https://dnschecker.org/
 GLOBAL_DNS_SERVER_LIST = {
@@ -39,14 +39,22 @@ GLOBAL_DNS_SERVER_LIST = {
 }
 
 
-def vulnerable_check(domain):
+# 先使用NS Query简单检查，如果没有错误，再单独在NS服务器上查询
+def __check_ns_query_error(domain, nameserver_host='8.8.8.8'):
     name = dns.name.from_text(domain)
     q = dns.message.make_query(qname=name, rdtype=dns.rdatatype.NS, use_edns=True, flags=dns.flags.RD | dns.flags.AD)
     # print("The query is:")
     # print(q)
     # print("")
 
-    r = dns.query.udp(q, "8.8.8.8")
+    if is_ip_str(nameserver_host) is False:
+        a_records = query_a_records(nameserver_host)
+        if len(a_records) == 0:
+            return True
+        # 有多条记录，只取第1条
+        nameserver_host = a_records[0]
+
+    r = dns.query.udp(q=q, where=nameserver_host)
     # print("The response is:")
     # print(r)
     # print("")
@@ -93,6 +101,40 @@ def query_ns_records(domain):
     return results
 
 
+def query_a_records(domain):
+    ips = []
+    try:
+        myResolver = dns.resolver.Resolver()
+        myResolver.nameservers = ['114.114.114.114', '8.8.8.8']
+        myAnswers = myResolver.resolve(domain, 'A')
+        if myAnswers.rrset is not None:
+            for item in myAnswers.rrset.items:
+                ips.append(item.address)
+    except dns.resolver.NXDOMAIN:
+        print('The DNS query name does not exist:' + domain)
+        pass
+    except dns.resolver.NoAnswer:
+        print('The DNS response does not contain an answer to the question:' + domain)
+        pass
+    return ips
+
+
+def vulnerable_check(parent_domain):
+    # 先默认执行一次NS查询，如果有错误就直接返回
+    nameservers = query_ns_records(parent_domain)
+    print('NS Record Values:')
+    print(nameservers)
+
+    if __check_ns_query_error(parent_domain) is True:
+        return True
+
+    # 没有错误，就要查询出该子域的NS服务，然后逐个指定NS服务去进一步查询，判断有没有错误
+    for host in nameservers:
+        if __check_ns_query_error(parent_domain, host) is True:
+            return True
+    return False
+
+
 def usage():
     print(f'dns-ns-checker.py <DOMAIN>')
     print(f'dns-ns-checker.py -r <DOMAIN_LIST_FILE>')
@@ -101,8 +143,17 @@ def usage():
 def parent_name(name):
     p = name.find('.')
     if p != -1:
-        return name[p+1:]
+        return name[p + 1:]
     return name
+
+
+def is_ip_str(s):
+    try:
+        ipaddress.ip_address(s)
+        return True
+    except Exception as e:
+        return False
+
 
 
 if __name__ == '__main__':
@@ -115,15 +166,13 @@ if __name__ == '__main__':
         print(parent_domains)
         for name in parent_domains:
             if vulnerable_check(name.strip()):
-                print(f'!!! {name} is vulnerable. Here are NS Records:')
-                print(query_ns_records(name))
+                print(f'!!! {name} is vulnerable.')
             else:
                 print(f'{name} is not vulnerable.')
     elif len(sys.argv) == 2:
         name = sys.argv[1].strip()
-        if vulnerable_check(name):
-            print(f'!!! {name} is vulnerable. Here are NS Records:')
-            print(query_ns_records(name))
+        if vulnerable_check(name.strip()):
+            print(f'!!! {name} is vulnerable. ')
         else:
             print(f'{name} is not vulnerable.')
     else:
