@@ -155,7 +155,6 @@ def is_ip_str(s):
         return False
 
 
-
 if __name__ == '__main__':
     if len(sys.argv) == 3 and sys.argv[1].strip() == '-r':
         parent_domains = []
