@@ -80,7 +80,10 @@ def __query_ns_records_worker(domain, dns_server):
         pass
     except dns.resolver.LifetimeTimeout as e:
         pass
+    except dns.resolver.NoAnswer as e:  # 没有应答
+        pass
     except Exception as e:
+        print(type(e))
         print(e)
     return ns_servers
 
@@ -123,7 +126,10 @@ def vulnerable_check(parent_domain):
     # 先默认执行一次NS查询，如果有错误就直接返回
     nameservers = query_ns_records(parent_domain)
     print(f'{parent_domain} NS Record Values:')
-    print(nameservers)
+    if len(nameservers) > 0:
+        print(nameservers)
+    else:
+        print('NULL')
 
     if __check_ns_query_error(parent_domain) is True:
         return True
